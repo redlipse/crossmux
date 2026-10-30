@@ -29,7 +29,7 @@ constexpr size_t MAX_RESPONSE_BYTES = 4096;
 
 bool applyCommonClientSetup(freeink::SecureHttpClient& http) {
   // One small stack buffer per request, matching resumable downloads without a new heap string.
-  char userAgent[80];
+  char userAgent[128];
   const int length =
       snprintf(userAgent, sizeof(userAgent), "CrossMux-%s-" CROSSPOINT_VERSION, HalSystem::getDeviceModel());
   if (length < 0 || static_cast<size_t>(length) >= sizeof(userAgent)) {
@@ -59,10 +59,13 @@ HttpDownloader::DownloadError runGetSecure(const std::string& url, const std::st
                                            const std::vector<HttpDownloader::Header>& headers,
                                            const freeink::FetchSink& sink, const bool* cancelFlag = nullptr,
                                            size_t* bytesOut = nullptr, const bool downgradeRedirectsToHttp = false) {
-  char userAgent[80];
+  char userAgent[128];
   const int length =
       snprintf(userAgent, sizeof(userAgent), "CrossMux-%s-" CROSSPOINT_VERSION, HalSystem::getDeviceModel());
-  if (length < 0 || static_cast<size_t>(length) >= sizeof(userAgent)) return HttpDownloader::HTTP_ERROR;
+  if (length < 0 || static_cast<size_t>(length) >= sizeof(userAgent)) {
+    LOG_ERR("HTTP", "User-Agent exceeds the request buffer (%d bytes)", length);
+    return HttpDownloader::HTTP_ERROR;
+  }
   WifiPowerSaveGuard psGuard;
   freeink::FetchOptions options;
   options.redirectToHttp = downgradeRedirectsToHttp;
